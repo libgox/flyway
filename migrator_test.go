@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
 	"testing"
 	"time"
 
@@ -40,22 +41,24 @@ func TestMysqlMigrate(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	schemas := []Schema{
+	schemas := []*Schema{
 		{
-			Version:     1,
-			Description: "Create users table",
-			Script:      "V1__Create_users.sql",
-			Sql:         `CREATE TABLE IF NOT EXISTS users (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(50));`,
+			InstalledRank: 0,
+			Version:       "1",
+			Description:   "Create users table",
+			Script:        "V1__Create_users.sql",
+			Sql:           `CREATE TABLE IF NOT EXISTS users (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(50));`,
 		},
 		{
-			Version:     2,
-			Description: "Add email column",
-			Script:      "V2__Add_email.sql",
-			Sql:         `ALTER TABLE users ADD COLUMN email VARCHAR(100);`,
+			InstalledRank: 1,
+			Version:       "2",
+			Description:   "Add email column",
+			Script:        "V2__Add_email.sql",
+			Sql:           `ALTER TABLE users ADD COLUMN email VARCHAR(100);`,
 		},
 	}
 
-	err = migrator.Migrate(schemas)
+	err = migrator.MigrateBySchemas(schemas)
 	require.NoError(t, err)
 
 	var migrationCount int
@@ -79,22 +82,24 @@ func TestSqliteMigrate(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	schemas := []Schema{
+	schemas := []*Schema{
 		{
-			Version:     1,
-			Description: "Create users table",
-			Script:      "V1__Create_users.sql",
-			Sql:         `CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);`,
+			InstalledRank: 0,
+			Version:       "1",
+			Description:   "Create users table",
+			Script:        "V1__Create_users.sql",
+			Sql:           `CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);`,
 		},
 		{
-			Version:     2,
-			Description: "Add email column",
-			Script:      "V2__Add_email.sql",
-			Sql:         `ALTER TABLE users ADD COLUMN email TEXT;`,
+			InstalledRank: 1,
+			Version:       "2",
+			Description:   "Add email column",
+			Script:        "V2__Add_email.sql",
+			Sql:           `ALTER TABLE users ADD COLUMN email TEXT;`,
 		},
 	}
 
-	err = migrator.Migrate(schemas)
+	err = migrator.MigrateBySchemas(schemas)
 	assert.NoError(t, err)
 
 	var migrationCount int
@@ -112,4 +117,18 @@ func waitForDB(db *sql.DB) error {
 		time.Sleep(1 * time.Second)
 	}
 	return fmt.Errorf("database not ready after waiting")
+}
+
+func TestSql2Schemas(t *testing.T) {
+	dir, err := os.Getwd()
+	require.NoError(t, err)
+	var migrator Migrator
+	schemas, err := migrator.dirSql2Schemas(dir + "/testsql/migration")
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(schemas))
+	schema := schemas[0]
+	assert.Equal(t, 1, schema.InstalledRank)
+	assert.Equal(t, "1.0", schema.Version)
+	assert.Equal(t, "mysql_flyway", schema.Description)
+	assert.Equal(t, "V1_0__mysql_flyway.sql", schema.Script)
 }

@@ -1,8 +1,9 @@
 package flyway
 
 type Schema struct {
-	Version     int
-	Description string
-	Script      string
-	Sql         string
+	InstalledRank int
+	Version       string
+	Description   string
+	Script        string
+	Sql           string
 }
