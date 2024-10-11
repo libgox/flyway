@@ -12,17 +12,9 @@ go get github.com/libgox/flyway
 
 ## 💡 Usage
 
-### Migrate Manually
+### Initialization Sample DB & Migrator
 
-```go
-package main
-
-import (
-	"database/sql"
-	"github.com/libgox/flyway"
-)
-
-func main() {
+```
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		panic(err)
@@ -37,7 +29,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+```
 
+### Auto Migrate db/migration path
+
+If you want to specify the migration path, you can use `MigrateFromPath` method.
+
+```go
+	err = migrator.Migrate()
+	if err != nil {
+		panic(err)
+	}
+```
+
+### Migrate Manually
+
+```go
 	schemas := []flyway.Schema{
 		{
 			Version:     1,
@@ -53,7 +60,7 @@ func main() {
 		},
 	}
 
-	err = migrator.Migrate(schemas)
+	err = migrator.MigrateBySchemas(schemas)
 	if err != nil {
 		panic(err)
 	}
