@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Go 1.18+
+- Go 1.20+
 
 ## 🚀 Install
 
