@@ -10,6 +10,10 @@
 go get github.com/libgox/flyway
 ```
 
+## NOTICE
+
+If you are using MySQL and need to execute multiple SQL statements, make sure to add `?multiStatements=true` to your connection string. This is required to allow the execution of multiple SQL statements in a single query.
+
 ## 💡 Usage
 
 ### Initialization Sample DB & Migrator
