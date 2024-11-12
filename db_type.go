@@ -3,6 +3,7 @@ package flyway
 type DbType string
 
 const (
-	DbTypeMySQL  DbType = "mysql"
-	DbTypeSqlite DbType = "sqlite3"
+	DbTypeMySQL    DbType = "mysql"
+	DbTypePostgres DbType = "postgres"
+	DbTypeSqlite   DbType = "sqlite3"
 )
