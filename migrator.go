@@ -19,9 +19,10 @@ type MigratorConfig struct {
 }
 
 type Migrator struct {
-	dbType DbType
-	user   string
-	db     *sql.DB
+	dbType   DbType
+	user     string
+	database Database
+	db       *sql.DB
 }
 
 func NewMigrator(db *sql.DB, config *MigratorConfig) (*Migrator, error) {
@@ -33,6 +34,7 @@ func NewMigrator(db *sql.DB, config *MigratorConfig) (*Migrator, error) {
 	var err error
 	var exec sql.Result
 	if migrator.dbType == DbTypeMySQL {
+		migrator.database = newMysqlDatabase(db)
 		exec, err = migrator.db.Exec(`CREATE TABLE IF NOT EXISTS flyway_schema_history (
 		installed_rank INT NOT NULL,
 		version VARCHAR(50) COLLATE utf8mb4_bin DEFAULT NULL,
@@ -48,6 +50,7 @@ func NewMigrator(db *sql.DB, config *MigratorConfig) (*Migrator, error) {
 		KEY flyway_schema_history_s_idx (success)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;`)
 	} else if migrator.dbType == DbTypeSqlite {
+		migrator.database = newSqliteDatabase(db)
 		exec, err = migrator.db.Exec(`CREATE TABLE IF NOT EXISTS flyway_schema_history (
 		installed_rank INTEGER NOT NULL,
 		version TEXT DEFAULT NULL,
