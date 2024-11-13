@@ -28,6 +28,15 @@ func (m *MysqlDatabase) CreateSchemaHistoryTable() (sql.Result, error) {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;`)
 }
 
+func (m *MysqlDatabase) RecordMigration(installedRank int, version string, description string, script string, checksum int32, user string, executionTime int) (sql.Result, error) {
+	return m.db.Exec("INSERT INTO flyway_schema_history (installed_rank, version, description, type, script, checksum, installed_by, execution_time, success) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		installedRank, version, description, "SQL", script, checksum, user, executionTime, 1)
+}
+
+func (m *MysqlDatabase) IsVersionMigrated(version string) *sql.Row {
+	return m.db.QueryRow("SELECT COUNT(1) FROM flyway_schema_history WHERE version = ?", version)
+}
+
 func (m *MysqlDatabase) AcquireLock() error {
 	var result int
 	err := m.db.QueryRow("SELECT GET_LOCK('flyway_lock', 10)").Scan(&result)

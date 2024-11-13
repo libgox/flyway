@@ -133,7 +133,8 @@ func (m *Migrator) MigrateBySchemas(schemas []*Schema) error {
 
 	for _, schema := range schemas {
 		var count int
-		err := m.db.QueryRow("SELECT COUNT(1) FROM flyway_schema_history WHERE version = ?", schema.Version).Scan(&count)
+		row := m.database.IsVersionMigrated(schema.Version)
+		err := row.Scan(&count)
 		if err != nil {
 			return fmt.Errorf("error checking schema version %s: %v", schema.Version, err)
 		}
@@ -155,8 +156,7 @@ func (m *Migrator) MigrateBySchemas(schemas []*Schema) error {
 
 		checksum := calculateChecksum(schema.Sql)
 
-		exec, err := m.db.Exec("INSERT INTO flyway_schema_history (installed_rank, version, description, type, script, checksum, installed_by, execution_time, success) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			schema.InstalledRank, schema.Version, schema.Description, "SQL", schema.Script, checksum, m.user, executionTime, 1)
+		exec, err := m.database.RecordMigration(schema.InstalledRank, schema.Version, schema.Description, schema.Script, checksum, m.user, executionTime)
 		if err != nil {
 			return fmt.Errorf("error recording migration version %s: %v", schema.Version, err)
 		}

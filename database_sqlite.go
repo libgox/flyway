@@ -25,6 +25,15 @@ func (s *SqliteDatabase) CreateSchemaHistoryTable() (sql.Result, error) {
 		);`)
 }
 
+func (s *SqliteDatabase) RecordMigration(installedRank int, version string, description string, script string, checksum int32, user string, executionTime int) (sql.Result, error) {
+	return s.db.Exec("INSERT INTO flyway_schema_history (installed_rank, version, description, type, script, checksum, installed_by, execution_time, success) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		installedRank, version, description, "SQL", script, checksum, user, executionTime, 1)
+}
+
+func (s *SqliteDatabase) IsVersionMigrated(version string) *sql.Row {
+	return s.db.QueryRow("SELECT COUNT(1) FROM flyway_schema_history WHERE version = ?", version)
+}
+
 func (s *SqliteDatabase) AcquireLock() error {
 	return nil
 }
