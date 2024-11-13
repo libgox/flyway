@@ -33,6 +33,8 @@ func NewMigrator(db *sql.DB, config *MigratorConfig) (*Migrator, error) {
 	}
 	if migrator.dbType == DbTypeMySQL {
 		migrator.database = newMysqlDatabase(db)
+	} else if migrator.dbType == DbTypePostgres {
+		migrator.database = newPostgresDatabase(db)
 	} else if migrator.dbType == DbTypeSqlite {
 		migrator.database = newSqliteDatabase(db)
 	} else {

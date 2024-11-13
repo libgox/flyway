@@ -8,12 +8,13 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/testcontainers/testcontainers-go/modules/mysql"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
 func TestMysqlMigrate(t *testing.T) {
@@ -56,6 +57,60 @@ func TestMysqlMigrate(t *testing.T) {
 			Description:   "Add email column",
 			Script:        "V2__Add_email.sql",
 			Sql:           `ALTER TABLE users ADD COLUMN email VARCHAR(100);`,
+		},
+	}
+
+	err = migrator.MigrateBySchemas(schemas)
+	require.NoError(t, err)
+
+	var migrationCount int
+	err = db.QueryRow("SELECT COUNT(*) FROM flyway_schema_history").Scan(&migrationCount)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, migrationCount, "Migrations should be applied")
+}
+
+func TestPostgresMigrate(t *testing.T) {
+	ctx := context.Background()
+
+	container, err := postgres.RunContainer(ctx, postgres.WithDatabase("testdb"))
+	require.NoError(t, err)
+
+	// nolint:errcheck
+	defer container.Terminate(ctx)
+
+	dsn, err := container.ConnectionString(ctx)
+	require.NoError(t, err)
+
+	dsn = fmt.Sprintf("%ssslmode=disable", dsn)
+
+	db, err := sql.Open("postgres", dsn)
+	require.NoError(t, err)
+
+	defer db.Close()
+
+	err = waitForDB(db)
+	require.NoError(t, err)
+
+	migrator, err := NewMigrator(db, &MigratorConfig{
+		DbType: DbTypePostgres,
+		User:   "postgres",
+	})
+	require.NoError(t, err)
+
+	schemas := []*Schema{
+		{
+			InstalledRank: 0,
+			Version:       "1",
+			Description:   "Create users table",
+			Script:        "V1__Create_users.sql",
+			Sql:           `CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(50));`,
+		},
+		{
+			InstalledRank: 1,
+			Version:       "2",
+			Description:   "Add email column",
+			Script:        "V2__Add_email.sql",
+			Sql:           `ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(100);`,
 		},
 	}
 
