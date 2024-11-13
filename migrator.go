@@ -31,43 +31,14 @@ func NewMigrator(db *sql.DB, config *MigratorConfig) (*Migrator, error) {
 		user:   config.User,
 		db:     db,
 	}
-	var err error
-	var exec sql.Result
 	if migrator.dbType == DbTypeMySQL {
 		migrator.database = newMysqlDatabase(db)
-		exec, err = migrator.db.Exec(`CREATE TABLE IF NOT EXISTS flyway_schema_history (
-		installed_rank INT NOT NULL,
-		version VARCHAR(50) COLLATE utf8mb4_bin DEFAULT NULL,
-		description VARCHAR(200) COLLATE utf8mb4_bin NOT NULL,
-		type VARCHAR(20) COLLATE utf8mb4_bin NOT NULL,
-		script VARCHAR(1000) COLLATE utf8mb4_bin NOT NULL,
-		checksum INT DEFAULT NULL,
-		installed_by VARCHAR(100) COLLATE utf8mb4_bin NOT NULL,
-		installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		execution_time INT NOT NULL,
-		success TINYINT(1) NOT NULL,
-		PRIMARY KEY (installed_rank),
-		KEY flyway_schema_history_s_idx (success)
-	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;`)
 	} else if migrator.dbType == DbTypeSqlite {
 		migrator.database = newSqliteDatabase(db)
-		exec, err = migrator.db.Exec(`CREATE TABLE IF NOT EXISTS flyway_schema_history (
-		installed_rank INTEGER NOT NULL,
-		version TEXT DEFAULT NULL,
-		description TEXT NOT NULL,
-		type TEXT NOT NULL,
-		script TEXT NOT NULL,
-		checksum INTEGER DEFAULT NULL,
-		installed_by TEXT NOT NULL,
-		installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		execution_time INTEGER NOT NULL,
-		success INTEGER NOT NULL,
-		PRIMARY KEY (installed_rank),
-		CHECK (success IN (0, 1))
-		);`)
 	} else {
 		return nil, fmt.Errorf("unsupported database driver: %s", migrator.dbType)
 	}
+	exec, err := migrator.database.CreateSchemaHistoryTable()
 	if err != nil {
 		return nil, err
 	}
@@ -149,13 +120,13 @@ func (m *Migrator) fileSql2Schema(filePath string, installedRank int) (*Schema, 
 
 // MigrateBySchemas applies the schema migrations
 func (m *Migrator) MigrateBySchemas(schemas []*Schema) error {
-	err := m.acquireLock()
+	err := m.database.AcquireLock()
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		if unlockErr := m.releaseLock(); unlockErr != nil {
+		if unlockErr := m.database.ReleaseLock(); unlockErr != nil {
 			log.Printf("Failed to release lock: %v", unlockErr)
 		}
 	}()
@@ -184,47 +155,22 @@ func (m *Migrator) MigrateBySchemas(schemas []*Schema) error {
 
 		checksum := calculateChecksum(schema.Sql)
 
-		_, err = m.db.Exec("INSERT INTO flyway_schema_history (installed_rank, version, description, type, script, checksum, installed_by, execution_time, success) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		exec, err := m.db.Exec("INSERT INTO flyway_schema_history (installed_rank, version, description, type, script, checksum, installed_by, execution_time, success) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			schema.InstalledRank, schema.Version, schema.Description, "SQL", schema.Script, checksum, m.user, executionTime, 1)
 		if err != nil {
 			return fmt.Errorf("error recording migration version %s: %v", schema.Version, err)
+		}
+		rowsAffected, err := exec.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("error getting rows affected: %v", err)
+		}
+		if rowsAffected != 1 {
+			return fmt.Errorf("unexpected number of rows affected: %d", rowsAffected)
 		}
 	}
 
 	log.Println("Migrations completed successfully.")
 	return nil
-}
-
-func (m *Migrator) acquireLock() error {
-	if m.dbType == DbTypeMySQL {
-		var result int
-		err := m.db.QueryRow("SELECT GET_LOCK('flyway_lock', 10)").Scan(&result)
-		if err != nil {
-			return fmt.Errorf("error acquiring lock: %v", err)
-		}
-		if result != 1 {
-			return fmt.Errorf("failed to acquire lock, another migration might be running")
-		}
-		return nil
-	} else {
-		return nil
-	}
-}
-
-func (m *Migrator) releaseLock() error {
-	if m.dbType == DbTypeMySQL {
-		var result int
-		err := m.db.QueryRow("SELECT RELEASE_LOCK('flyway_lock')").Scan(&result)
-		if err != nil {
-			return fmt.Errorf("error releasing lock: %v", err)
-		}
-		if result != 1 {
-			return fmt.Errorf("failed to release lock")
-		}
-		return nil
-	} else {
-		return nil
-	}
 }
 
 // calculateChecksum calculates the CRC32 checksum of the migration script
