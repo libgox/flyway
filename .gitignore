@@ -20,6 +20,7 @@ target/*
 *.test
 
 # Output of the go coverage tool, specifically when used with LiteIDE
+coverage.txt
 *.out
 
 # Go workspace file
