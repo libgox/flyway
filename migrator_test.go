@@ -20,7 +20,7 @@ import (
 func TestMysqlMigrate(t *testing.T) {
 	ctx := context.Background()
 
-	container, err := mysql.RunContainer(ctx, mysql.WithDatabase("testdb"))
+	container, err := mysql.Run(ctx, "mysql:8.0.36", mysql.WithDatabase("testdb"))
 	require.NoError(t, err)
 
 	// nolint:errcheck
@@ -72,7 +72,7 @@ func TestMysqlMigrate(t *testing.T) {
 func TestPostgresMigrate(t *testing.T) {
 	ctx := context.Background()
 
-	container, err := postgres.RunContainer(ctx, postgres.WithDatabase("testdb"))
+	container, err := postgres.Run(ctx, "docker.io/postgres:16-alpine", postgres.WithDatabase("testdb"))
 	require.NoError(t, err)
 
 	// nolint:errcheck
