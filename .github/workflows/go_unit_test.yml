@@ -16,8 +16,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: "go.mod"
-      - name: setup ZooKeeper
-        uses: shoothzj/setup-zookeeper-action@main
       - name: Run coverage
         run: go test ./... -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic
       - name: Upload coverage to Codecov
