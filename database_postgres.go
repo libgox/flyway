@@ -20,7 +20,7 @@ type PostgresDatabase struct {
 
 func (p *PostgresDatabase) CreateSchemaHistoryTable() (sql.Result, error) {
 	return p.db.Exec(`CREATE TABLE IF NOT EXISTS flyway_schema_history (
-    installed_rank INT NOT NULL,
+    installed_rank INT NOT NULL PRIMARY KEY,
     version VARCHAR(50) DEFAULT NULL,
     description VARCHAR(200) NOT NULL,
     type VARCHAR(20) NOT NULL,
@@ -31,7 +31,6 @@ func (p *PostgresDatabase) CreateSchemaHistoryTable() (sql.Result, error) {
     execution_time INTEGER NOT NULL,
     success BOOLEAN NOT NULL
 	);
-    ALTER TABLE flyway_schema_history ADD CONSTRAINT flyway_schema_history_pk PRIMARY KEY (installed_rank);
 `)
 }
 
