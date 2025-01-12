@@ -7,7 +7,7 @@ import (
 
 var _ Database = (*PostgresDatabase)(nil)
 
-const LOCK_MAGIC_NUM = (0x46 << 40) | // F
+const LockMagicNum = (0x46 << 40) | // F
 	(0x6C << 32) | // l
 	(0x79 << 24) | // y
 	(0x77 << 16) | // w
@@ -45,7 +45,7 @@ func (p *PostgresDatabase) IsVersionMigrated(version string) *sql.Row {
 
 func (p *PostgresDatabase) AcquireLock() error {
 	var result bool
-	err := p.db.QueryRow("SELECT pg_try_advisory_lock($1)", LOCK_MAGIC_NUM).Scan(&result)
+	err := p.db.QueryRow("SELECT pg_try_advisory_lock($1)", LockMagicNum).Scan(&result)
 	if err != nil {
 		return fmt.Errorf("error acquiring lock: %v", err)
 	}
@@ -57,7 +57,7 @@ func (p *PostgresDatabase) AcquireLock() error {
 
 func (p *PostgresDatabase) ReleaseLock() error {
 	var result bool
-	err := p.db.QueryRow("SELECT pg_advisory_unlock($1)", LOCK_MAGIC_NUM).Scan(&result)
+	err := p.db.QueryRow("SELECT pg_advisory_unlock($1)", LockMagicNum).Scan(&result)
 	if err != nil {
 		return fmt.Errorf("error releasing lock: %v", err)
 	}
